@@ -1,86 +1,260 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "@/app/api/games/route";
 import { NextRequest } from "next/server";
-import type { SteamSearchResponse } from "@/types/game";
+import type { IGDBGame } from "@/types/game";
 
-vi.mock("@/lib/steam", () => ({
-  searchSteamGames: vi.fn(),
+vi.mock("@/lib/igdb", () => ({
+  getPopularRecentGames: vi.fn(),
+  getTopRatedGames: vi.fn(),
+  getGamesByGenre: vi.fn(),
+  getFilteredGames: vi.fn(),
+  getGameDetail: vi.fn(),
+  searchGames: vi.fn(),
 }));
 
-import { searchSteamGames } from "@/lib/steam";
-const mockSearch = vi.mocked(searchSteamGames);
+import {
+  getPopularRecentGames,
+  getTopRatedGames,
+  getGamesByGenre,
+  getFilteredGames,
+  getGameDetail,
+  searchGames,
+} from "@/lib/igdb";
 
-function makeRequest(url: string): NextRequest {
-  return new NextRequest(new URL(url, "http://localhost:3000"));
-}
-
-function makeMockResponse(count: number): SteamSearchResponse {
-  return {
-    totalCount: count,
-    games: Array.from({ length: count }, (_, i) => ({
-      appid: i + 1,
-      name: `Game ${i + 1}`,
-      capsuleImage: `https://img/${i + 1}.jpg`,
-      headerImage: `https://header/${i + 1}.jpg`,
-      url: `https://store.steampowered.com/app/${i + 1}/`,
-      released: "2024년 1월 1일",
-      reviewSummary: "긍정적",
-      reviewPercent: 80,
-      reviewCount: 1000,
-      discountPercent: null,
-      priceFinal: 1500000,
-      priceOriginal: 1500000,
-      platforms: [{ slug: "windows" as const, label: "Windows" }],
-      tagIds: [19],
-    })),
-  };
-}
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+const mockGame: IGDBGame = {
+  id: 1942,
+  name: "The Witcher 3: Wild Hunt",
+  summary: "An open world RPG",
+  cover: { url: "//images.igdb.com/igdb/image/upload/t_thumb/abc.jpg" },
+  genres: [{ id: 12, name: "RPG" }],
+  platforms: [{ id: 6, name: "PC (Microsoft Windows)" }],
+  first_release_date: 1431993600,
+  rating: 93.5,
+};
 
 describe("GET /api/games", () => {
-  it("returns shuffled games sliced to RESULTS_PER_PAGE (6)", async () => {
-    mockSearch.mockResolvedValue(makeMockResponse(20));
-
-    const res = await GET(makeRequest("/api/games?tags=19,122"));
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.games).toHaveLength(6);
-    expect(body.totalCount).toBe(20);
-    expect(mockSearch).toHaveBeenCalledWith({ tags: "19,122", count: 50 });
+  beforeEach(() => {
+    vi.mocked(getPopularRecentGames).mockReset();
+    vi.mocked(getTopRatedGames).mockReset();
+    vi.mocked(getGamesByGenre).mockReset();
+    vi.mocked(getFilteredGames).mockReset();
   });
 
-  it("passes undefined tags when not provided", async () => {
-    mockSearch.mockResolvedValue(makeMockResponse(3));
+  async function callGamesRoute(params: string = "") {
+    const { GET } = await import("@/app/api/games/route");
+    const request = new NextRequest(
+      new URL(`http://localhost/api/games${params ? `?${params}` : ""}`)
+    );
+    return GET(request);
+  }
 
-    const res = await GET(makeRequest("/api/games"));
-    const body = await res.json();
+  it("returns popular games by default", async () => {
+    vi.mocked(getPopularRecentGames).mockResolvedValue([mockGame]);
 
-    expect(res.status).toBe(200);
-    expect(body.games).toHaveLength(3);
-    expect(mockSearch).toHaveBeenCalledWith({ tags: undefined, count: 50 });
+    const response = await callGamesRoute();
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(getPopularRecentGames).toHaveBeenCalledWith(20);
   });
 
-  it("returns 500 on search failure", async () => {
-    mockSearch.mockRejectedValue(new Error("Steam down"));
+  it("returns popular games with section=popular", async () => {
+    vi.mocked(getPopularRecentGames).mockResolvedValue([mockGame]);
 
-    const res = await GET(makeRequest("/api/games?tags=19"));
-    const body = await res.json();
+    const response = await callGamesRoute("section=popular");
+    const data = await response.json();
 
-    expect(res.status).toBe(500);
-    expect(body.error).toBe("게임 데이터를 가져올 수 없습니다.");
+    expect(data.games).toEqual([mockGame]);
+    expect(getPopularRecentGames).toHaveBeenCalledWith(20);
   });
 
-  it("returns fewer than 6 games when results are limited", async () => {
-    mockSearch.mockResolvedValue(makeMockResponse(2));
+  it("returns top-rated games with section=top-rated", async () => {
+    vi.mocked(getTopRatedGames).mockResolvedValue([mockGame]);
 
-    const res = await GET(makeRequest("/api/games?tags=19"));
-    const body = await res.json();
+    const response = await callGamesRoute("section=top-rated");
+    const data = await response.json();
 
-    expect(res.status).toBe(200);
-    expect(body.games).toHaveLength(2);
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(getTopRatedGames).toHaveBeenCalledWith(20);
+  });
+
+  it("returns genre-filtered games with section=genre and genreId", async () => {
+    vi.mocked(getGamesByGenre).mockResolvedValue([mockGame]);
+
+    const response = await callGamesRoute("section=genre&genreId=12");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(getGamesByGenre).toHaveBeenCalledWith(12, 20);
+  });
+
+  it("returns 400 when section=genre without genreId", async () => {
+    const response = await callGamesRoute("section=genre");
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns filtered games with section=filter and genres/platforms", async () => {
+    vi.mocked(getFilteredGames).mockResolvedValue([mockGame]);
+
+    const response = await callGamesRoute("section=filter&genres=12,31&platforms=6,48");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(getFilteredGames).toHaveBeenCalledWith([12, 31], [6, 48], 20);
+  });
+
+  it("passes empty arrays when filter has no genres/platforms", async () => {
+    vi.mocked(getFilteredGames).mockResolvedValue([]);
+
+    const response = await callGamesRoute("section=filter");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([]);
+    expect(getFilteredGames).toHaveBeenCalledWith([], [], 20);
+  });
+
+  it("respects custom limit parameter", async () => {
+    vi.mocked(getPopularRecentGames).mockResolvedValue([]);
+
+    await callGamesRoute("section=popular&limit=5");
+
+    expect(getPopularRecentGames).toHaveBeenCalledWith(5);
+  });
+
+  it("returns 500 on internal error", async () => {
+    vi.mocked(getPopularRecentGames).mockRejectedValue(new Error("API down"));
+
+    const response = await callGamesRoute("section=popular");
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBeDefined();
+  });
+});
+
+describe("GET /api/games/[id]", () => {
+  beforeEach(() => {
+    vi.mocked(getGameDetail).mockReset();
+  });
+
+  async function callGameDetailRoute(id: string) {
+    const { GET } = await import("@/app/api/games/[id]/route");
+    const request = new NextRequest(
+      new URL(`http://localhost/api/games/${id}`)
+    );
+    return GET(request, { params: Promise.resolve({ id }) });
+  }
+
+  it("returns game detail for valid ID", async () => {
+    vi.mocked(getGameDetail).mockResolvedValue(mockGame);
+
+    const response = await callGameDetailRoute("1942");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.game).toEqual(mockGame);
+    expect(getGameDetail).toHaveBeenCalledWith(1942);
+  });
+
+  it("returns 400 for non-numeric ID", async () => {
+    const response = await callGameDetailRoute("abc");
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns 404 when game not found", async () => {
+    vi.mocked(getGameDetail).mockResolvedValue(null);
+
+    const response = await callGameDetailRoute("99999");
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns 500 on internal error", async () => {
+    vi.mocked(getGameDetail).mockRejectedValue(new Error("IGDB error"));
+
+    const response = await callGameDetailRoute("1942");
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBeDefined();
+  });
+});
+
+describe("GET /api/games/search", () => {
+  beforeEach(() => {
+    vi.mocked(searchGames).mockReset();
+  });
+
+  async function callSearchRoute(params: string = "") {
+    const { GET } = await import("@/app/api/games/search/route");
+    const request = new NextRequest(
+      new URL(`http://localhost/api/games/search${params ? `?${params}` : ""}`)
+    );
+    return GET(request);
+  }
+
+  it("returns search results for valid query", async () => {
+    vi.mocked(searchGames).mockResolvedValue([mockGame]);
+
+    const response = await callSearchRoute("q=witcher");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(searchGames).toHaveBeenCalledWith("witcher");
+  });
+
+  it("returns 400 when query is missing", async () => {
+    const response = await callSearchRoute();
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns 400 when query is empty string", async () => {
+    const response = await callSearchRoute("q=");
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+  });
+
+  it("returns 400 when query is whitespace only", async () => {
+    const response = await callSearchRoute("q=%20%20%20");
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+  });
+
+  it("trims query before searching", async () => {
+    vi.mocked(searchGames).mockResolvedValue([]);
+
+    await callSearchRoute("q=%20zelda%20");
+
+    expect(searchGames).toHaveBeenCalledWith("zelda");
+  });
+
+  it("returns 500 on internal error", async () => {
+    vi.mocked(searchGames).mockRejectedValue(new Error("Search failed"));
+
+    const response = await callSearchRoute("q=test");
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBeDefined();
   });
 });

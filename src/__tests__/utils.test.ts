@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shuffleArray, pickRandom, cn } from "@/lib/utils";
+import { shuffleArray, pickRandom, cn, igdbImageUrl } from "@/lib/utils";
 
 describe("shuffleArray", () => {
   it("returns a new array with same elements", () => {
@@ -72,5 +72,37 @@ describe("cn", () => {
 
   it("handles single class", () => {
     expect(cn("solo")).toBe("solo");
+  });
+});
+
+describe("igdbImageUrl", () => {
+  it("prepends https: to protocol-relative URLs", () => {
+    expect(igdbImageUrl("//images.igdb.com/igdb/image/upload/t_thumb/abc.jpg")).toBe(
+      "https://images.igdb.com/igdb/image/upload/t_cover_big/abc.jpg"
+    );
+  });
+
+  it("replaces size token with specified size", () => {
+    expect(
+      igdbImageUrl("//images.igdb.com/igdb/image/upload/t_thumb/abc.jpg", "t_720p")
+    ).toBe("https://images.igdb.com/igdb/image/upload/t_720p/abc.jpg");
+  });
+
+  it("handles URLs that already have https:", () => {
+    expect(
+      igdbImageUrl("https://images.igdb.com/igdb/image/upload/t_thumb/abc.jpg", "t_screenshot_big")
+    ).toBe("https://images.igdb.com/igdb/image/upload/t_screenshot_big/abc.jpg");
+  });
+
+  it("uses t_cover_big as default size", () => {
+    expect(igdbImageUrl("//images.igdb.com/igdb/image/upload/t_micro/xyz.png")).toBe(
+      "https://images.igdb.com/igdb/image/upload/t_cover_big/xyz.png"
+    );
+  });
+
+  it("replaces different size tokens correctly", () => {
+    expect(
+      igdbImageUrl("//images.igdb.com/igdb/image/upload/t_cover_small/game.jpg", "t_1080p")
+    ).toBe("https://images.igdb.com/igdb/image/upload/t_1080p/game.jpg");
   });
 });

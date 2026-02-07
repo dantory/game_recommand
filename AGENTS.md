@@ -4,7 +4,7 @@ Guidelines for AI coding agents operating in this repository.
 
 ## Project Overview
 
-Steam/PC game recommendation wizard with Korean UI. Next.js 16 + React 19 + TypeScript (strict) + Tailwind CSS v4. Users pick genres/tags in a 3-step wizard, then get recommendations from the Steam Store search API.
+IGDB-powered game discovery service with Netflix-style UI and Korean localization. Next.js 16 + React 19 + TypeScript (strict) + Tailwind CSS v4. Users browse curated game sections, filter by genre/platform, search games, and view detailed game pages with screenshots, videos, and similar games.
 
 ## Commands
 
@@ -24,64 +24,69 @@ Verify changes with `pnpm test`, `pnpm build`, and `pnpm lint`.
 ```
 src/
   app/
-    page.tsx              # Root page (server component, renders WizardShell)
+    page.tsx              # Root page (client component, Netflix-style discovery)
     layout.tsx            # Root layout (fonts: Geist + Noto Sans KR, lang="ko")
-    globals.css           # Tailwind v4 import, CSS custom properties, dark mode
-    api/games/route.ts    # GET route handler — proxies to Steam search API
+    globals.css           # Tailwind v4 import, CSS custom properties, dark mode, scrollbar-hide
+    api/games/route.ts    # GET route — sections: popular, top-rated, genre, filter
+    api/games/[id]/route.ts   # GET route — game detail by ID
+    api/games/search/route.ts # GET route — search games by query
+    games/[id]/page.tsx   # Game detail page (server component)
   components/
-    wizard/               # Wizard orchestration (3-step flow)
-      WizardShell.tsx     # State owner: step, selectedGenres, selectedTags
-      GenreStep.tsx       # Step 1: genre multi-select
-      TagStep.tsx         # Step 2: tag multi-select (optional)
-      ResultStep.tsx      # Step 3: fetch + display game results
-      StepIndicator.tsx   # Visual step progress bar
+    sections/             # Page-level sections
+      GameSection.tsx     # Horizontal scroll game list (fetch on mount)
+      GameGrid.tsx        # Responsive grid for filtered/search results
     ui/                   # Reusable primitives
       Button.tsx          # Primary/secondary variants
-      SelectableChip.tsx  # Toggle chip with emoji + label
-      GameCard.tsx        # Game display card with image, rating, price, Steam link
-      PlatformBadge.tsx   # Windows/macOS/Linux platform badges
+      FilterChip.tsx      # Toggle chip with emoji + label (genre/platform)
+      FilterBar.tsx       # Horizontal scroll genre + platform filter bar
+      SearchBar.tsx       # Search input with form submission
+      GameCard.tsx        # Game card with cover, rating, genres, platform badges
+      PlatformBadge.tsx   # PC/PS/Xbox/Switch/Android/iOS platform badges
       Skeleton.tsx        # Loading skeleton for GameCard
   lib/
-    steam.ts              # Steam Store search HTML parser (regex-based, no external libs)
-    constants.ts          # Genre/tag definitions (Korean labels, Steam tag IDs)
-    utils.ts              # cn(), shuffleArray(), pickRandom()
+    igdb.ts               # IGDB API client (Twitch OAuth + Apicalypse queries)
+    constants.ts          # Genre/platform definitions (Korean labels, IGDB IDs)
+    utils.ts              # cn(), shuffleArray(), pickRandom(), igdbImageUrl()
   types/
-    game.ts               # TypeScript interfaces: SteamGame, SteamPlatform, SteamSearchResponse
+    game.ts               # TypeScript interfaces: IGDBGame, IGDBGamesResponse
   __tests__/
-    steam.test.ts         # Steam parser unit tests (28 tests)
-    utils.test.ts         # Utility function tests (13 tests)
-    route.test.ts         # API route handler tests with mocked Steam search (4 tests)
+    utils.test.ts         # Utility function tests (18 tests)
+    igdb.test.ts          # IGDB client tests with mocked fetch (23 tests)
+    route.test.ts         # API route handler tests (19 tests)
+    components.test.tsx   # UI component tests (38 tests)
 ```
 
 ### Data Flow
 
-1. `WizardShell` (client) owns all wizard state via `useState`
-2. Steps receive state + callbacks as props (no context/store)
-3. `ResultStep` converts selected genre/tag slugs to Steam tag IDs, fetches `/api/games?tags=19,122,...`
-4. Route handler (`api/games/route.ts`) calls `searchSteamGames()` from `steam.ts`
-5. `steam.ts` fetches `store.steampowered.com/search/results/` HTML, parses game data via regex
-6. Server shuffles results, returns top 6 games
+1. `page.tsx` (client) owns search query, selected genres/platforms via `useState`
+2. In default mode: `GameSection` components fetch curated sections (popular, top-rated, genre-specific)
+3. With active filters or search: fetches filtered/search results, displays in `GameGrid`
+4. Route handlers call IGDB functions from `igdb.ts`
+5. `igdb.ts` authenticates via Twitch OAuth, queries IGDB v4 with Apicalypse body
+6. Game detail page (`games/[id]/page.tsx`) is a server component that calls `getGameDetail()` directly
 
-### Steam Search API
+### IGDB API
 
-- Endpoint: `https://store.steampowered.com/search/results/`
-- No API key required — public endpoint
-- Params: `tags={ids}`, `category1=998`, `l=koreana`, `cc=KR`, `count=50`, `force_infinite=1`
-- Response: HTML with `<a class="search_result_row">` blocks (parsed via regex)
-- Price in `data-price-final` is KRW x 100 (e.g., 3360000 = 33,600 won)
-- Review tooltip format: Korean text with percent and count
+- **Auth**: Twitch OAuth client_credentials → access token (cached in memory with expiry)
+- **Endpoint**: `POST https://api.igdb.com/v4/games`
+- **Headers**: `Client-ID` + `Authorization: Bearer {token}` + `Content-Type: text/plain`
+- **Body**: Apicalypse query text (e.g., `fields name, cover.url; where rating > 80; sort rating desc; limit 20;`)
+- **Rate limit**: 4 requests/second
+- **Images**: `//images.igdb.com/igdb/image/upload/t_thumb/xxx.jpg` — use `igdbImageUrl()` to set protocol + size (`t_cover_big`, `t_screenshot_big`, `t_720p`, `t_1080p`)
 
 ### Testing
 
 - **Framework**: Vitest 4.x with `@vitejs/plugin-react`
-- **Config**: `vitest.config.ts` at project root (path alias configured)
-- **Test location**: `src/__tests__/*.test.ts`
+- **Config**: `vitest.config.ts` at project root (path alias configured, jsdom environment)
+- **Setup**: `src/__tests__/setup.ts` imports `@testing-library/jest-dom/vitest`
+- **Test location**: `src/__tests__/*.test.ts` and `src/__tests__/*.test.tsx`
 - **Mocking**: Use `vi.mock()` for module mocks, `vi.fn()` for function mocks
 - **Pattern**: Import from `@/` alias in tests, same as production code
+- **Component tests**: Mock `next/image` and `next/link` with plain HTML elements
 
 ### Environment
 
-- No API keys required (Steam Store search is public)
+- **Required**: `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` in `.env.local`
 - Path alias: `@/*` maps to `./src/*`
 - Deployed on Vercel
 
@@ -92,8 +97,8 @@ src/
 - **Strict mode enabled** (`"strict": true` in tsconfig)
 - **No type suppression**: never use `as any`, `@ts-ignore`, `@ts-expect-error`
 - Define component props as `interface` (not `type`) directly above the component
-- Use `type` imports for type-only imports: `import type { SteamGame } from "@/types/game"`
-- Prefer union literal types for bounded values: `variant?: "primary" | "secondary"`, `currentStep: 1 | 2 | 3`
+- Use `type` imports for type-only imports: `import type { IGDBGame } from "@/types/game"`
+- Prefer union literal types for bounded values: `variant?: "primary" | "secondary"`
 - API response types live in `src/types/game.ts`
 - Extend native HTML element types for UI components: `interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>`
 
@@ -108,8 +113,8 @@ Order (no blank lines between groups — this codebase does not separate them):
 // Correct
 import { useState, useCallback } from "react";
 import { GameCard } from "@/components/ui/GameCard";
-import { Button } from "@/components/ui/Button";
-import type { SteamGame } from "@/types/game";
+import { igdbImageUrl, cn } from "@/lib/utils";
+import type { IGDBGame } from "@/types/game";
 ```
 
 - Always use the `@/` path alias for cross-directory imports
@@ -128,28 +133,29 @@ import type { SteamGame } from "@/types/game";
 
 | Item | Convention | Example |
 |------|-----------|---------|
-| Components | PascalCase | `GameCard`, `WizardShell` |
+| Components | PascalCase | `GameCard`, `GameSection` |
 | Component files | PascalCase.tsx | `GameCard.tsx` |
-| Hooks/callbacks | camelCase, `on` prefix for props | `onToggleGenre`, `onStartOver` |
-| Internal handlers | camelCase, `handle` prefix | `handleStartOver` |
-| Constants | UPPER_SNAKE_CASE for module-level | `GENRES`, `RESULTS_PER_PAGE` |
-| Interfaces | PascalCase + Props/Response suffix | `GenreStepProps`, `SteamSearchResponse` |
-| Directories | kebab-case or lowercase | `wizard/`, `ui/` |
+| Hooks/callbacks | camelCase, `on` prefix for props | `onToggleGenre`, `onSearch` |
+| Internal handlers | camelCase, `handle` prefix | `handleSearch` |
+| Constants | UPPER_SNAKE_CASE for module-level | `GENRES`, `PLATFORMS`, `RESULTS_PER_SECTION` |
+| Interfaces | PascalCase + Props/Response suffix | `GameCardProps`, `IGDBGamesResponse` |
+| Directories | kebab-case or lowercase | `sections/`, `ui/` |
 
 ### Styling
 
 - **Tailwind CSS v4** with `@tailwindcss/postcss` plugin
 - Custom color tokens via CSS custom properties in `globals.css` (not `tailwind.config`)
-- Use semantic tokens: `bg-background`, `text-foreground`, `text-muted-foreground`, `bg-muted`, `border-border`, `bg-accent`, `text-accent`, `bg-accent-light`
+- Use semantic tokens: `bg-background`, `text-foreground`, `text-muted-foreground`, `bg-muted`, `bg-card`, `border-border`, `bg-accent`, `text-accent`, `bg-accent-light`
 - Dark mode: automatic via `prefers-color-scheme` media query — CSS variables swap in `globals.css`
-- Custom animation: `.animate-fade-in` class for step transitions
+- Custom utilities: `.animate-fade-in` for transitions, `.scrollbar-hide` for scroll containers
 - Rounded corners: `rounded-xl` for interactive elements, `rounded-2xl` for cards
 - Spacing: use `space-y-*` for vertical rhythm, `gap-*` for flex/grid
+- Horizontal scroll: `overflow-x-auto snap-x snap-mandatory scrollbar-hide` with `min-w-[Npx] snap-start` children
 
 ### Error Handling
 
 - API route: try/catch with `console.error` + JSON error response with status 500
-- Client fetch: try/catch, set error state string, show Korean error message + retry button
+- Client fetch: try/catch, set error state string, show Korean error message
 - `catch` blocks without binding (`catch {` not `catch (e) {` when error is unused)
 
 ### UI Text
@@ -162,6 +168,7 @@ import type { SteamGame } from "@/types/game";
 - Wrap state updaters in `useCallback` when passed as props
 - Use `URLSearchParams` for building query strings
 - Next.js `<Image>` for external images with explicit `sizes` prop
+- Use `igdbImageUrl()` to convert IGDB image URLs (protocol + size)
 - Fisher-Yates shuffle for randomization (see `utils.ts`)
 - Return `null` from components when nothing to render (e.g., `PlatformBadge`)
 - Use `Array.from({ length: N })` for generating skeleton placeholders
@@ -173,4 +180,3 @@ import type { SteamGame } from "@/types/game";
 - No `useEffect` for data that can be computed — derive from state
 - No `index` as key for dynamic lists — use stable IDs
 - No barrel exports (`index.ts`) — import directly from component files
-- No external HTML parsing libraries (cheerio, jsdom) — regex only for `steam.ts`

@@ -5,8 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "shared.fastly.steamstatic.com",
-        pathname: "/store_item_assets/**",
+        hostname: "images.igdb.com",
       },
     ],
   },

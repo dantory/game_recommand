@@ -20,8 +20,8 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "Steam 게임 추천",
-  description: "장르와 태그로 나에게 맞는 Steam 게임을 찾아보세요",
+  title: "게임 디스커버리",
+  description: "IGDB 기반 게임 추천 서비스",
 };
 
 export default function RootLayout({

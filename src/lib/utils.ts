@@ -14,3 +14,11 @@ export function pickRandom<T>(arr: T[], n: number): T[] {
 export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(" ");
 }
+
+export function igdbImageUrl(
+  url: string,
+  size: string = "t_cover_big"
+): string {
+  const withProtocol = url.startsWith("//") ? `https:${url}` : url;
+  return withProtocol.replace(/t_\w+/, size);
+}

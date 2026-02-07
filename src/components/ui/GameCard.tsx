@@ -1,35 +1,25 @@
 import Image from "next/image";
+import Link from "next/link";
 import { PlatformBadge } from "./PlatformBadge";
-import { cn } from "@/lib/utils";
-import type { SteamGame } from "@/types/game";
+import { cn, igdbImageUrl } from "@/lib/utils";
+import type { IGDBGame } from "@/types/game";
 
 interface GameCardProps {
-  game: SteamGame;
+  game: IGDBGame;
 }
 
 export function GameCard({ game }: GameCardProps) {
-  const isFree = game.priceFinal === null || game.priceFinal === 0;
-  const isDiscounted = (game.discountPercent ?? 0) > 0;
-  const formattedFinalPrice =
-    game.priceFinal !== null
-      ? `₩ ${(game.priceFinal / 100).toLocaleString("ko-KR")}`
-      : "무료";
-  const formattedOriginalPrice =
-    game.priceOriginal !== null
-      ? `₩ ${(game.priceOriginal / 100).toLocaleString("ko-KR")}`
-      : null;
-
+  const rating = game.rating ? Math.round(game.rating) : null;
+  
   return (
-    <a
-      href={game.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group overflow-hidden rounded-2xl border border-border transition-transform hover:scale-[1.02]"
+    <Link
+      href={`/games/${game.id}`}
+      className="group block overflow-hidden rounded-2xl border border-border bg-card transition-transform hover:scale-[1.02]"
     >
       <div className="relative aspect-video bg-muted">
-        {game.headerImage ? (
+        {game.cover?.url ? (
           <Image
-            src={game.headerImage}
+            src={igdbImageUrl(game.cover.url, "t_cover_big")}
             alt={game.name}
             fill
             className="object-cover"
@@ -42,44 +32,31 @@ export function GameCard({ game }: GameCardProps) {
         )}
       </div>
       <div className="space-y-2 p-4">
-        <h3 className="line-clamp-2 text-sm font-bold leading-tight">
+        <h3 className="line-clamp-1 text-sm font-bold leading-tight">
           {game.name}
         </h3>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span
             className={cn(
               "font-medium",
-              game.reviewPercent !== null && game.reviewPercent >= 80 && "text-green-600 dark:text-green-400",
-              game.reviewPercent !== null && game.reviewPercent < 60 && "text-red-600 dark:text-red-400"
+              rating !== null && rating >= 80 && "text-green-600 dark:text-green-400",
+              rating !== null && rating >= 60 && rating < 80 && "text-yellow-600 dark:text-yellow-400",
+              rating !== null && rating < 60 && "text-red-600 dark:text-red-400"
             )}
           >
-            {game.reviewSummary ?? "평가 없음"}
+            {rating !== null ? `${rating}점` : "평가 없음"}
           </span>
-          {game.reviewPercent !== null && <span>{game.reviewPercent}%</span>}
-          {game.released && (
+          {game.genres && game.genres.length > 0 && (
             <>
               <span>|</span>
-              <span>{game.released}</span>
+              <span className="line-clamp-1 max-w-[120px]">
+                {game.genres.slice(0, 2).map(g => g.name).join(", ")}
+              </span>
             </>
           )}
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          {isDiscounted && (
-            <span className="rounded-md bg-accent px-1.5 py-0.5 text-xs font-bold text-white">
-              -{game.discountPercent}%
-            </span>
-          )}
-          {isDiscounted && formattedOriginalPrice && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formattedOriginalPrice}
-            </span>
-          )}
-          <span className="font-semibold">
-            {isFree ? "무료" : formattedFinalPrice}
-          </span>
-        </div>
-        <PlatformBadge platforms={game.platforms} />
+        <PlatformBadge platforms={game.platforms || []} />
       </div>
-    </a>
+    </Link>
   );
 }

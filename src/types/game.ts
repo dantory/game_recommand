@@ -1,26 +1,17 @@
-export interface SteamGame {
-  appid: number;
+export interface IGDBGame {
+  id: number;
   name: string;
-  headerImage: string;
-  capsuleImage: string;
-  url: string;
-  released: string | null;
-  reviewSummary: string | null;
-  reviewPercent: number | null;
-  reviewCount: number | null;
-  priceFinal: number | null;
-  priceOriginal: number | null;
-  discountPercent: number | null;
-  platforms: SteamPlatform[];
-  tagIds: number[];
+  summary?: string;
+  cover?: { url: string };
+  genres?: { id: number; name: string }[];
+  platforms?: { id: number; name: string }[];
+  first_release_date?: number;
+  rating?: number;
+  screenshots?: { url: string }[];
+  videos?: { video_id: string }[];
+  similar_games?: IGDBGame[];
 }
 
-export interface SteamPlatform {
-  slug: "windows" | "mac" | "linux";
-  label: string;
-}
-
-export interface SteamSearchResponse {
-  games: SteamGame[];
-  totalCount: number;
+export interface IGDBGamesResponse {
+  games: IGDBGame[];
 }
