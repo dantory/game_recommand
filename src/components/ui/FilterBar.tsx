@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
 import { FilterChip } from "./FilterChip";
 import { GENRES, PLATFORMS } from "@/lib/constants";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 
 interface FilterBarProps {
   selectedGenres: number[];
@@ -17,90 +17,10 @@ export function FilterBar({
   onToggleGenre,
   onTogglePlatform,
 }: FilterBarProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-  const hasDragged = useRef(false);
-  const pointerId = useRef<number | null>(null);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    isDragging.current = true;
-    hasDragged.current = false;
-    dragStartX.current = e.clientX;
-    dragScrollLeft.current = el.scrollLeft;
-    pointerId.current = e.pointerId;
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const dx = e.clientX - dragStartX.current;
-    if (!hasDragged.current && Math.abs(dx) > 5) {
-      hasDragged.current = true;
-      if (pointerId.current !== null) {
-        el.setPointerCapture(pointerId.current);
-      }
-      el.style.cursor = "grabbing";
-    }
-    if (hasDragged.current) {
-      e.preventDefault();
-      el.scrollLeft = dragScrollLeft.current - dx;
-    }
-  }, []);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    const el = scrollRef.current;
-    if (!el) return;
-    if (hasDragged.current && pointerId.current !== null) {
-      el.releasePointerCapture(pointerId.current);
-    }
-    el.style.cursor = "";
-    pointerId.current = null;
-  }, []);
-
-  const updateScrollState = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 0);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const resizeObserver = new ResizeObserver(updateScrollState);
-    resizeObserver.observe(el);
-    return () => {
-      el.removeEventListener("scroll", updateScrollState);
-      resizeObserver.disconnect();
-    };
-  }, [updateScrollState]);
-
-  const scroll = useCallback((direction: "left" | "right") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({
-      left: direction === "left" ? -200 : 200,
-      behavior: "smooth",
+  const { scrollRef, canScrollLeft, canScrollRight, scroll, handlers } =
+    useHorizontalScroll({
+      scrollAmount: 200,
     });
-  }, []);
-
-  const handleClickCapture = useCallback((e: React.MouseEvent) => {
-    if (hasDragged.current) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-  }, []);
 
   return (
     <div className="group/filter relative">
@@ -130,11 +50,7 @@ export function FilterBar({
       )}
       <div
         ref={scrollRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onClickCapture={handleClickCapture}
+        {...handlers}
         className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide select-none"
       >
         {GENRES.map((genre) => (

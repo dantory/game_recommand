@@ -44,22 +44,33 @@ export async function getAccessToken(): Promise<string> {
   return cachedToken.accessToken;
 }
 
+export function invalidateTokenCache() {
+  cachedToken = null;
+}
+
 export async function queryIGDB<T>(
   endpoint: string,
   body: string
 ): Promise<T[]> {
-  const accessToken = await getAccessToken();
-  const clientId = process.env.TWITCH_CLIENT_ID;
+  const fetchIGDB = async (token: string) => {
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    return fetch(`${IGDB_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Client-ID": clientId!,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "text/plain",
+      },
+      body,
+    });
+  };
 
-  const res = await fetch(`${IGDB_BASE_URL}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Client-ID": clientId!,
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "text/plain",
-    },
-    body,
-  });
+  let res = await fetchIGDB(await getAccessToken());
+
+  if (res.status === 401) {
+    invalidateTokenCache();
+    res = await fetchIGDB(await getAccessToken());
+  }
 
   if (!res.ok) {
     throw new Error(`IGDB API error: ${res.status}`);

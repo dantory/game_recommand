@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { GameCard } from "@/components/ui/GameCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import type { IGDBGame, IGDBGamesResponse } from "@/types/game";
 
 interface GameSectionProps {
@@ -14,9 +15,13 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
   const [games, setGames] = useState<IGDBGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { scrollRef, canScrollLeft, canScrollRight, scroll, handlers } =
+    useHorizontalScroll({
+      snapScroll: true,
+      preventDragStart: true,
+      dragThreshold: 3,
+    });
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -35,88 +40,6 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
 
     fetchGames();
   }, [fetchUrl]);
-
-  const updateScrollState = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 0);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const resizeObserver = new ResizeObserver(updateScrollState);
-    resizeObserver.observe(el);
-
-    return () => {
-      el.removeEventListener("scroll", updateScrollState);
-      resizeObserver.disconnect();
-    };
-  }, [isLoading, games, updateScrollState]);
-
-  const scroll = useCallback((direction: "left" | "right") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const scrollAmount = el.clientWidth * 0.8;
-    el.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  }, []);
-
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-  const hasDragged = useRef(false);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    isDragging.current = true;
-    hasDragged.current = false;
-    dragStartX.current = e.clientX;
-    dragScrollLeft.current = el.scrollLeft;
-    el.setPointerCapture(e.pointerId);
-    el.style.scrollSnapType = "none";
-    el.style.scrollBehavior = "auto";
-    el.style.cursor = "grabbing";
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    e.preventDefault();
-    const el = scrollRef.current;
-    if (!el) return;
-    const dx = e.clientX - dragStartX.current;
-    if (Math.abs(dx) > 3) hasDragged.current = true;
-    el.scrollLeft = dragScrollLeft.current - dx;
-  }, []);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    const el = scrollRef.current;
-    if (!el) return;
-    el.releasePointerCapture(e.pointerId);
-    el.style.scrollSnapType = "";
-    el.style.scrollBehavior = "";
-    el.style.cursor = "";
-  }, []);
-
-  const handleClickCapture = useCallback((e: React.MouseEvent) => {
-    if (hasDragged.current) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-  }, []);
-
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
 
   if (error) {
     return (
@@ -159,12 +82,7 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
         )}
         <div
           ref={scrollRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onClickCapture={handleClickCapture}
-          onDragStart={handleDragStart}
+          {...handlers}
           className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth cursor-grab select-none"
         >
           {isLoading

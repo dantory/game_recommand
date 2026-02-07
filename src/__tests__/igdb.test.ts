@@ -133,6 +133,49 @@ describe("igdb client", () => {
         "IGDB API error: 500"
       );
     });
+
+    it("retries with new token on 401 response", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse("stale_token"))
+        .mockResolvedValueOnce({ ok: false, status: 401 })
+        .mockResolvedValueOnce(createTokenResponse("fresh_token"))
+        .mockResolvedValueOnce(createIGDBResponse([mockGame]));
+      const { queryIGDB } = await import("@/lib/igdb");
+
+      const result = await queryIGDB<IGDBGame>("games", "fields name;");
+
+      expect(result).toEqual([mockGame]);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+      const retryHeaders = mockFetch.mock.calls[3][1].headers;
+      expect(retryHeaders.Authorization).toBe("Bearer fresh_token");
+    });
+
+    it("throws when retry after 401 also fails", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse("stale_token"))
+        .mockResolvedValueOnce({ ok: false, status: 401 })
+        .mockResolvedValueOnce(createTokenResponse("another_token"))
+        .mockResolvedValueOnce({ ok: false, status: 403 });
+      const { queryIGDB } = await import("@/lib/igdb");
+
+      await expect(queryIGDB("games", "fields name;")).rejects.toThrow(
+        "IGDB API error: 403"
+      );
+    });
+
+    it("invalidates token cache on 401", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse("old_token"))
+        .mockResolvedValueOnce({ ok: false, status: 401 })
+        .mockResolvedValueOnce(createTokenResponse("new_token"))
+        .mockResolvedValueOnce(createIGDBResponse([]));
+      const { queryIGDB, getAccessToken } = await import("@/lib/igdb");
+
+      await queryIGDB("games", "fields name;");
+      const tokenAfterRetry = await getAccessToken();
+
+      expect(tokenAfterRetry).toBe("new_token");
+    });
   });
 
   describe("getPopularRecentGames", () => {
