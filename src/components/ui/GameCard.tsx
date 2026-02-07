@@ -14,14 +14,16 @@ export function GameCard({ game }: GameCardProps) {
   return (
     <Link
       href={`/games/${game.id}`}
-      className="group block overflow-hidden rounded-2xl border border-border bg-card transition-transform hover:scale-[1.02]"
+      draggable={false}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-transform hover:scale-[1.02]"
     >
-      <div className="relative aspect-video bg-muted">
+      <div className="relative h-[130px] w-full bg-muted sm:h-[150px]">
         {game.cover?.url ? (
           <Image
             src={igdbImageUrl(game.cover.url, "t_cover_big")}
             alt={game.name}
             fill
+            draggable={false}
             className="object-cover"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
@@ -31,14 +33,14 @@ export function GameCard({ game }: GameCardProps) {
           </div>
         )}
       </div>
-      <div className="space-y-2 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="line-clamp-1 text-sm font-bold leading-tight">
           {game.name}
         </h3>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span
             className={cn(
-              "font-medium",
+              "shrink-0 font-medium",
               rating !== null && rating >= 80 && "text-green-600 dark:text-green-400",
               rating !== null && rating >= 60 && rating < 80 && "text-yellow-600 dark:text-yellow-400",
               rating !== null && rating < 60 && "text-red-600 dark:text-red-400"
@@ -49,13 +51,15 @@ export function GameCard({ game }: GameCardProps) {
           {game.genres && game.genres.length > 0 && (
             <>
               <span>|</span>
-              <span className="line-clamp-1 max-w-[120px]">
+              <span className="truncate">
                 {game.genres.slice(0, 2).map(g => g.name).join(", ")}
               </span>
             </>
           )}
         </div>
-        <PlatformBadge platforms={game.platforms || []} />
+        <div className="mt-auto">
+          <PlatformBadge platforms={game.platforms || []} maxCount={4} />
+        </div>
       </div>
     </Link>
   );

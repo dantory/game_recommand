@@ -68,6 +68,56 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
     });
   }, []);
 
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const hasDragged = useRef(false);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    hasDragged.current = false;
+    dragStartX.current = e.clientX;
+    dragScrollLeft.current = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+    el.style.scrollSnapType = "none";
+    el.style.scrollBehavior = "auto";
+    el.style.cursor = "grabbing";
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    const el = scrollRef.current;
+    if (!el) return;
+    const dx = e.clientX - dragStartX.current;
+    if (Math.abs(dx) > 3) hasDragged.current = true;
+    el.scrollLeft = dragScrollLeft.current - dx;
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.releasePointerCapture(e.pointerId);
+    el.style.scrollSnapType = "";
+    el.style.scrollBehavior = "";
+    el.style.cursor = "";
+  }, []);
+
+  const handleClickCapture = useCallback((e: React.MouseEvent) => {
+    if (hasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
   if (error) {
     return (
       <section className="space-y-4">
@@ -109,13 +159,19 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
         )}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onClickCapture={handleClickCapture}
+          onDragStart={handleDragStart}
+          className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth cursor-grab select-none"
         >
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="min-w-[200px] shrink-0 snap-start sm:min-w-[240px]"
+                  className="w-[200px] shrink-0 snap-start sm:w-[240px]"
                 >
                   <Skeleton />
                 </div>
@@ -123,7 +179,7 @@ export function GameSection({ title, fetchUrl }: GameSectionProps) {
             : games.map((game) => (
                 <div
                   key={game.id}
-                  className="min-w-[200px] shrink-0 snap-start sm:min-w-[240px]"
+                  className="w-[200px] shrink-0 snap-start self-stretch sm:w-[240px]"
                 >
                   <GameCard game={game} />
                 </div>

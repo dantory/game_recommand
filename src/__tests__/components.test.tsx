@@ -368,11 +368,11 @@ describe("Skeleton", () => {
     expect(skeleton?.className).toContain("animate-pulse");
   });
 
-  it("renders aspect-video placeholder", async () => {
+  it("renders image placeholder with fixed height", async () => {
     const { Skeleton } = await import("@/components/ui/Skeleton");
     const { container } = render(<Skeleton />);
-    const aspectVideo = container.querySelector(".aspect-video");
-    expect(aspectVideo).toBeTruthy();
+    const placeholder = container.querySelector(".bg-muted");
+    expect(placeholder).toBeTruthy();
   });
 });
 

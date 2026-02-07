@@ -2,9 +2,10 @@ import { cn } from "@/lib/utils";
 
 interface PlatformBadgeProps {
   platforms: { id: number; name: string }[];
+  maxCount?: number;
 }
 
-export function PlatformBadge({ platforms }: PlatformBadgeProps) {
+export function PlatformBadge({ platforms, maxCount }: PlatformBadgeProps) {
   if (!platforms || platforms.length === 0) return null;
 
   // Map platform names to simpler display
@@ -24,9 +25,12 @@ export function PlatformBadge({ platforms }: PlatformBadgeProps) {
 
   if (uniquePlatforms.length === 0) return null;
 
+  const visiblePlatforms = maxCount ? uniquePlatforms.slice(0, maxCount) : uniquePlatforms;
+  const remaining = uniquePlatforms.length - visiblePlatforms.length;
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      {uniquePlatforms.map((platform) => (
+      {visiblePlatforms.map((platform) => (
         <span
           key={platform.label}
           className={cn(
@@ -37,6 +41,11 @@ export function PlatformBadge({ platforms }: PlatformBadgeProps) {
           {platform.label}
         </span>
       ))}
+      {remaining > 0 && (
+        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          +{remaining}
+        </span>
+      )}
     </div>
   );
 }
