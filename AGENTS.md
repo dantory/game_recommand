@@ -4,7 +4,7 @@ Guidelines for AI coding agents operating in this repository.
 
 ## Project Overview
 
-Mobile game recommendation wizard with Korean UI. Next.js 16 + React 19 + TypeScript (strict) + Tailwind CSS v4. Users pick genres/tags in a 3-step wizard, then get recommendations from the RAWG API filtered to iOS/Android.
+Steam/PC game recommendation wizard with Korean UI. Next.js 16 + React 19 + TypeScript (strict) + Tailwind CSS v4. Users pick genres/tags in a 3-step wizard, then get recommendations from the Steam Store search API.
 
 ## Commands
 
@@ -12,10 +12,12 @@ Mobile game recommendation wizard with Korean UI. Next.js 16 + React 19 + TypeSc
 pnpm dev          # Dev server on localhost:3000
 pnpm build        # Production build (use as typecheck + build verification)
 pnpm lint         # ESLint (Next.js core-web-vitals + typescript rules)
+pnpm test         # Run all tests (vitest)
+pnpm test:watch   # Run tests in watch mode
 pnpm start        # Start production server (requires build first)
 ```
 
-**No test framework is configured.** There are no unit or integration tests. Verify changes with `pnpm build` and `pnpm lint`.
+Verify changes with `pnpm test`, `pnpm build`, and `pnpm lint`.
 
 ## Architecture
 
@@ -25,7 +27,7 @@ src/
     page.tsx              # Root page (server component, renders WizardShell)
     layout.tsx            # Root layout (fonts: Geist + Noto Sans KR, lang="ko")
     globals.css           # Tailwind v4 import, CSS custom properties, dark mode
-    api/games/route.ts    # GET route handler — proxies to RAWG API
+    api/games/route.ts    # GET route handler — proxies to Steam search API
   components/
     wizard/               # Wizard orchestration (3-step flow)
       WizardShell.tsx     # State owner: step, selectedGenres, selectedTags
@@ -36,28 +38,50 @@ src/
     ui/                   # Reusable primitives
       Button.tsx          # Primary/secondary variants
       SelectableChip.tsx  # Toggle chip with emoji + label
-      GameCard.tsx        # Game display card with image, rating, platforms
-      PlatformBadge.tsx   # iOS/Android platform badges
+      GameCard.tsx        # Game display card with image, rating, price, Steam link
+      PlatformBadge.tsx   # Windows/macOS/Linux platform badges
       Skeleton.tsx        # Loading skeleton for GameCard
   lib/
-    rawg.ts               # RAWG API client (server-side only)
-    constants.ts          # Genre/tag definitions (Korean labels), platform IDs
+    steam.ts              # Steam Store search HTML parser (regex-based, no external libs)
+    constants.ts          # Genre/tag definitions (Korean labels, Steam tag IDs)
     utils.ts              # cn(), shuffleArray(), pickRandom()
   types/
-    game.ts               # TypeScript interfaces for RAWG API responses
+    game.ts               # TypeScript interfaces: SteamGame, SteamPlatform, SteamSearchResponse
+  __tests__/
+    steam.test.ts         # Steam parser unit tests (28 tests)
+    utils.test.ts         # Utility function tests (13 tests)
+    route.test.ts         # API route handler tests with mocked Steam search (4 tests)
 ```
 
 ### Data Flow
 
 1. `WizardShell` (client) owns all wizard state via `useState`
 2. Steps receive state + callbacks as props (no context/store)
-3. `ResultStep` fetches `/api/games?genres=...&tags=...` on mount
-4. Route handler (`api/games/route.ts`) calls `fetchMobileGames()` from `rawg.ts`
-5. Server shuffles results, returns top 6 games
+3. `ResultStep` converts selected genre/tag slugs to Steam tag IDs, fetches `/api/games?tags=19,122,...`
+4. Route handler (`api/games/route.ts`) calls `searchSteamGames()` from `steam.ts`
+5. `steam.ts` fetches `store.steampowered.com/search/results/` HTML, parses game data via regex
+6. Server shuffles results, returns top 6 games
+
+### Steam Search API
+
+- Endpoint: `https://store.steampowered.com/search/results/`
+- No API key required — public endpoint
+- Params: `tags={ids}`, `category1=998`, `l=koreana`, `cc=KR`, `count=50`, `force_infinite=1`
+- Response: HTML with `<a class="search_result_row">` blocks (parsed via regex)
+- Price in `data-price-final` is KRW x 100 (e.g., 3360000 = 33,600 won)
+- Review tooltip format: Korean text with percent and count
+
+### Testing
+
+- **Framework**: Vitest 4.x with `@vitejs/plugin-react`
+- **Config**: `vitest.config.ts` at project root (path alias configured)
+- **Test location**: `src/__tests__/*.test.ts`
+- **Mocking**: Use `vi.mock()` for module mocks, `vi.fn()` for function mocks
+- **Pattern**: Import from `@/` alias in tests, same as production code
 
 ### Environment
 
-- `RAWG_API_KEY` in `.env.local` — required for API calls
+- No API keys required (Steam Store search is public)
 - Path alias: `@/*` maps to `./src/*`
 - Deployed on Vercel
 
@@ -68,7 +92,7 @@ src/
 - **Strict mode enabled** (`"strict": true` in tsconfig)
 - **No type suppression**: never use `as any`, `@ts-ignore`, `@ts-expect-error`
 - Define component props as `interface` (not `type`) directly above the component
-- Use `type` imports for type-only imports: `import type { RawgGame } from "@/types/game"`
+- Use `type` imports for type-only imports: `import type { SteamGame } from "@/types/game"`
 - Prefer union literal types for bounded values: `variant?: "primary" | "secondary"`, `currentStep: 1 | 2 | 3`
 - API response types live in `src/types/game.ts`
 - Extend native HTML element types for UI components: `interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>`
@@ -85,7 +109,7 @@ Order (no blank lines between groups — this codebase does not separate them):
 import { useState, useCallback } from "react";
 import { GameCard } from "@/components/ui/GameCard";
 import { Button } from "@/components/ui/Button";
-import type { RawgGame } from "@/types/game";
+import type { SteamGame } from "@/types/game";
 ```
 
 - Always use the `@/` path alias for cross-directory imports
@@ -108,8 +132,8 @@ import type { RawgGame } from "@/types/game";
 | Component files | PascalCase.tsx | `GameCard.tsx` |
 | Hooks/callbacks | camelCase, `on` prefix for props | `onToggleGenre`, `onStartOver` |
 | Internal handlers | camelCase, `handle` prefix | `handleStartOver` |
-| Constants | UPPER_SNAKE_CASE for module-level | `GENRES`, `MOBILE_PLATFORM_IDS` |
-| Interfaces | PascalCase + Props/Response suffix | `GenreStepProps`, `RawgListResponse` |
+| Constants | UPPER_SNAKE_CASE for module-level | `GENRES`, `RESULTS_PER_PAGE` |
+| Interfaces | PascalCase + Props/Response suffix | `GenreStepProps`, `SteamSearchResponse` |
 | Directories | kebab-case or lowercase | `wizard/`, `ui/` |
 
 ### Styling
@@ -127,7 +151,6 @@ import type { RawgGame } from "@/types/game";
 - API route: try/catch with `console.error` + JSON error response with status 500
 - Client fetch: try/catch, set error state string, show Korean error message + retry button
 - `catch` blocks without binding (`catch {` not `catch (e) {` when error is unused)
-- Validate env vars with early throw: `if (!apiKey) throw new Error("...")`
 
 ### UI Text
 
@@ -150,3 +173,4 @@ import type { RawgGame } from "@/types/game";
 - No `useEffect` for data that can be computed — derive from state
 - No `index` as key for dynamic lists — use stable IDs
 - No barrel exports (`index.ts`) — import directly from component files
+- No external HTML parsing libraries (cheerio, jsdom) — regex only for `steam.ts`

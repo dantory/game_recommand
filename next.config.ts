@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "media.rawg.io",
-        pathname: "/media/**",
+        hostname: "shared.fastly.steamstatic.com",
+        pathname: "/store_item_assets/**",
       },
     ],
   },

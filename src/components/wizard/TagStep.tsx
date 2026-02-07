@@ -20,7 +20,7 @@ export function TagStep({
   return (
     <div className="animate-fade-in space-y-6">
       <div className="text-center">
-        <h2 className="text-lg font-bold">원하는 키워드를 선택하세요</h2>
+        <h2 className="text-lg font-bold">원하는 태그를 선택하세요</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           선택하지 않아도 괜찮아요
         </p>

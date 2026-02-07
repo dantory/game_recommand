@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { GameCard } from "@/components/ui/GameCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
-import type { RawgGame } from "@/types/game";
+import { GENRES, TAGS } from "@/lib/constants";
+import type { SteamGame } from "@/types/game";
 
 interface ResultStepProps {
   selectedGenres: string[];
@@ -17,7 +18,7 @@ export function ResultStep({
   selectedTags,
   onStartOver,
 }: ResultStepProps) {
-  const [games, setGames] = useState<RawgGame[]>([]);
+  const [games, setGames] = useState<SteamGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +26,17 @@ export function ResultStep({
     setIsLoading(true);
     setError(null);
 
+    const genreTagIds = selectedGenres
+      .map((slug) => GENRES.find((genre) => genre.slug === slug)?.tagId)
+      .filter((tagId): tagId is number => tagId !== undefined);
+    const tagTagIds = selectedTags
+      .map((slug) => TAGS.find((tag) => tag.slug === slug)?.tagId)
+      .filter((tagId): tagId is number => tagId !== undefined);
+    const allTagIds = [...genreTagIds, ...tagTagIds];
+
     const params = new URLSearchParams();
-    if (selectedGenres.length > 0) {
-      params.set("genres", selectedGenres.join(","));
-    }
-    if (selectedTags.length > 0) {
-      params.set("tags", selectedTags.join(","));
+    if (allTagIds.length > 0) {
+      params.set("tags", allTagIds.join(","));
     }
 
     try {
@@ -88,7 +94,7 @@ export function ResultStep({
       {!isLoading && !error && games.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {games.map((game) => (
-            <GameCard key={game.id} game={game} />
+            <GameCard key={game.appid} game={game} />
           ))}
         </div>
       )}

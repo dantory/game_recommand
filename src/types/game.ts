@@ -1,45 +1,26 @@
-export interface RawgPlatform {
-  platform: {
-    id: number;
-    name: string;
-    slug: string;
-  };
-}
-
-export interface RawgGenre {
-  id: number;
+export interface SteamGame {
+  appid: number;
   name: string;
-  slug: string;
-}
-
-export interface RawgTag {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-export interface RawgGame {
-  id: number;
-  name: string;
-  slug: string;
-  background_image: string | null;
-  rating: number;
-  rating_top: number;
-  metacritic: number | null;
+  headerImage: string;
+  capsuleImage: string;
+  url: string;
   released: string | null;
-  genres: RawgGenre[];
-  tags: RawgTag[];
-  platforms: RawgPlatform[];
+  reviewSummary: string | null;
+  reviewPercent: number | null;
+  reviewCount: number | null;
+  priceFinal: number | null;
+  priceOriginal: number | null;
+  discountPercent: number | null;
+  platforms: SteamPlatform[];
+  tagIds: number[];
 }
 
-export interface RawgListResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: RawgGame[];
+export interface SteamPlatform {
+  slug: "windows" | "mac" | "linux";
+  label: string;
 }
 
-export interface GameRecommendResponse {
-  games: RawgGame[];
+export interface SteamSearchResponse {
+  games: SteamGame[];
   totalCount: number;
 }

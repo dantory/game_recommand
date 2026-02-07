@@ -20,8 +20,8 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "모바일 게임 추천",
-  description: "장르와 키워드로 나에게 맞는 모바일 게임을 찾아보세요",
+  title: "Steam 게임 추천",
+  description: "장르와 태그로 나에게 맞는 Steam 게임을 찾아보세요",
 };
 
 export default function RootLayout({
