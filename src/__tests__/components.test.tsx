@@ -570,6 +570,39 @@ describe("GameSection", () => {
     const skeletons = container.querySelectorAll(".animate-pulse");
     expect(skeletons.length).toBe(0);
   });
+
+  it("renders scroll arrow buttons with aria-labels", async () => {
+    const manyGames = Array.from({ length: 20 }, (_, i) => ({
+      ...mockGame,
+      id: mockGame.id + i,
+      name: `Game ${i}`,
+    }));
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ games: manyGames }),
+    }) as unknown as typeof fetch;
+
+    await renderGameSection();
+    await screen.findByText("Game 0");
+
+    const rightBtn = screen.queryByLabelText("오른쪽으로 스크롤");
+    const leftBtn = screen.queryByLabelText("왼쪽으로 스크롤");
+    expect(rightBtn === null || rightBtn instanceof HTMLButtonElement).toBe(true);
+    expect(leftBtn === null || leftBtn instanceof HTMLButtonElement).toBe(true);
+  });
+
+  it("wraps scroll container in a relative group div", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ games: [mockGame] }),
+    }) as unknown as typeof fetch;
+
+    const { container } = await renderGameSection();
+    await screen.findByText("The Witcher 3: Wild Hunt");
+    const groupDiv = container.querySelector(".group\\/scroll");
+    expect(groupDiv).toBeTruthy();
+  });
 });
 
 describe("Home", () => {
