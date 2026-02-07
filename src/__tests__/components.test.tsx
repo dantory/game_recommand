@@ -1045,4 +1045,59 @@ describe("GameDetailPage", () => {
     await renderDetailPage("2003", noRatingGame);
     expect(screen.getByText("\uD3C9\uAC00 \uC5C6\uC74C")).toBeInTheDocument();
   });
+
+  it("renders scroll containers for screenshots and similar games", async () => {
+    const { container } = await renderDetailPage("1942");
+    const scrollGroups = container.querySelectorAll(".group\\/scroll");
+    expect(scrollGroups.length).toBe(2);
+  });
+});
+
+describe("ScrollableRow", () => {
+  it("renders children inside scroll container", async () => {
+    const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+    render(
+      <ScrollableRow>
+        <div>Item 1</div>
+        <div>Item 2</div>
+      </ScrollableRow>
+    );
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+    expect(screen.getByText("Item 2")).toBeInTheDocument();
+  });
+
+  it("wraps content in group/scroll relative div", async () => {
+    const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+    const { container } = render(
+      <ScrollableRow>
+        <div>Content</div>
+      </ScrollableRow>
+    );
+    expect(container.querySelector(".group\\/scroll")).toBeTruthy();
+  });
+
+  it("applies default snap scroll classes", async () => {
+    const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+    const { container } = render(
+      <ScrollableRow>
+        <div>Content</div>
+      </ScrollableRow>
+    );
+    const scrollDiv = container.querySelector(".snap-x");
+    expect(scrollDiv).toBeTruthy();
+    expect(scrollDiv?.classList.contains("cursor-grab")).toBe(true);
+    expect(scrollDiv?.classList.contains("scroll-smooth")).toBe(true);
+  });
+
+  it("uses custom className when provided", async () => {
+    const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+    const { container } = render(
+      <ScrollableRow className="flex gap-2 overflow-x-auto">
+        <div>Content</div>
+      </ScrollableRow>
+    );
+    const scrollDiv = container.querySelector(".gap-2");
+    expect(scrollDiv).toBeTruthy();
+    expect(container.querySelector(".snap-x")).toBeNull();
+  });
 });

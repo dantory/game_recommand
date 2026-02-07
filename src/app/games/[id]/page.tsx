@@ -5,6 +5,8 @@ import { getGameDetail } from "@/lib/igdb";
 import { igdbImageUrl, cn } from "@/lib/utils";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { GameCard } from "@/components/ui/GameCard";
+import { ScrollableRow } from "@/components/ui/ScrollableRow";
+import { ScreenshotGallery } from "@/components/ui/ScreenshotGallery";
 
 interface GameDetailPageProps {
   params: Promise<{ id: string }>;
@@ -120,21 +122,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
         {game.screenshots && game.screenshots.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-xl font-bold">스크린샷</h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {game.screenshots.map((shot, idx) => (
-                <div
-                  key={idx}
-                  className="relative aspect-video w-[300px] shrink-0 overflow-hidden rounded-xl border border-border md:w-[400px]"
-                >
-                  <Image
-                    src={igdbImageUrl(shot.url, "t_screenshot_big")}
-                    alt={`Screenshot ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            <ScreenshotGallery screenshots={game.screenshots} />
           </section>
         )}
 
@@ -165,16 +153,16 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
         {game.similar_games && game.similar_games.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-xl font-bold">비슷한 게임</h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+            <ScrollableRow snapScroll preventDragStart dragThreshold={3}>
               {game.similar_games.map((similar) => (
                 <div
                   key={similar.id}
-                  className="min-w-[200px] snap-start sm:min-w-[240px]"
+                  className="w-[200px] shrink-0 snap-start self-stretch sm:w-[240px]"
                 >
                   <GameCard game={similar} />
                 </div>
               ))}
-            </div>
+            </ScrollableRow>
           </section>
         )}
       </main>
