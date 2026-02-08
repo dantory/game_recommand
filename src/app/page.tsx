@@ -11,6 +11,7 @@ export default function Home() {
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [randomRefreshKey, setRandomRefreshKey] = useState(0);
   
   // State for filtered/search results
   const [filteredGames, setFilteredGames] = useState<IGDBGame[]>([]);
@@ -38,6 +39,10 @@ export default function Home() {
       setSelectedGenres([]);
       setSelectedPlatforms([]);
     }
+  }, []);
+
+  const handleRandomRefresh = useCallback(() => {
+    setRandomRefreshKey((prev) => prev + 1);
   }, []);
 
   // Effect to fetch filtered results
@@ -109,6 +114,12 @@ export default function Home() {
         </section>
       ) : (
         <div className="space-y-12">
+          <GameSection
+            title="오늘의 추천"
+            fetchUrl="/api/games?section=random"
+            refreshKey={randomRefreshKey}
+            onRefresh={handleRandomRefresh}
+          />
           <GameSection
             title="지금 뜨는 게임"
             fetchUrl="/api/games?section=popular"

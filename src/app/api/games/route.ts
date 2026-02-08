@@ -4,6 +4,7 @@ import {
   getTopRatedGames,
   getGamesByGenre,
   getFilteredGames,
+  getRandomCuratedGames,
 } from "@/lib/igdb";
 
 export async function GET(request: NextRequest) {
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest) {
         games = await getFilteredGames(genreIds, platformIds, limit);
         break;
       }
+      case "random":
+        games = await getRandomCuratedGames(limit);
+        break;
       case "popular":
       default:
         games = await getPopularRecentGames(limit);

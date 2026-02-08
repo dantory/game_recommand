@@ -168,6 +168,31 @@ export async function getFilteredGames(
   );
 }
 
+export async function getRandomCuratedGames(
+  limit: number = 20
+): Promise<IGDBGame[]> {
+  const fiveYearsAgo = Math.floor(Date.now() / 1000) - 5 * 365 * 24 * 60 * 60;
+  const now = Math.floor(Date.now() / 1000);
+  const randomOffset = Math.floor(Math.random() * 200);
+
+  const games = await queryIGDB<IGDBGame>(
+    "games",
+    `${GAME_FIELDS}
+    where first_release_date > ${fiveYearsAgo} & first_release_date < ${now} & rating > 70 & rating_count > 5 & cover != null;
+    sort rating desc;
+    limit ${limit};
+    offset ${randomOffset};`
+  );
+
+  // Shuffle so each request feels different even with similar offsets
+  const shuffled = [...games];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export async function searchGames(
   query: string,
   limit: number = 20

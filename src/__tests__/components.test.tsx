@@ -592,6 +592,61 @@ describe("GameSection", () => {
     expect(leftBtn === null || leftBtn instanceof HTMLButtonElement).toBe(true);
   });
 
+  it("renders refresh button when onRefresh is provided", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ games: [mockGame] }),
+    }) as unknown as typeof fetch;
+
+    const { GameSection } = await import(
+      "@/components/sections/GameSection"
+    );
+    render(
+      <GameSection
+        title="오늘의 추천"
+        fetchUrl="/api/games?section=random"
+        onRefresh={vi.fn()}
+      />
+    );
+
+    await screen.findByText("The Witcher 3: Wild Hunt");
+    expect(screen.getByLabelText("다시 추천받기")).toBeInTheDocument();
+  });
+
+  it("does not render refresh button when onRefresh is not provided", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ games: [mockGame] }),
+    }) as unknown as typeof fetch;
+
+    await renderGameSection();
+    await screen.findByText("Test Section");
+    expect(screen.queryByLabelText("다시 추천받기")).not.toBeInTheDocument();
+  });
+
+  it("calls onRefresh when refresh button is clicked", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ games: [mockGame] }),
+    }) as unknown as typeof fetch;
+
+    const onRefresh = vi.fn();
+    const { GameSection } = await import(
+      "@/components/sections/GameSection"
+    );
+    render(
+      <GameSection
+        title="오늘의 추천"
+        fetchUrl="/api/games?section=random"
+        onRefresh={onRefresh}
+      />
+    );
+
+    await screen.findByText("The Witcher 3: Wild Hunt");
+    fireEvent.click(screen.getByLabelText("다시 추천받기"));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("wraps scroll container in a relative group div", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -650,12 +705,18 @@ describe("Home", () => {
     expect(screen.getAllByText("\uC288\uD305").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders all 5 curated sections initially", async () => {
+  it("renders all 6 curated sections initially including random", async () => {
     await renderHome();
     const headings = screen.getAllByRole("heading", { level: 2 });
     const sectionTitles = headings.map((h) => h.textContent);
-    expect(sectionTitles).toContain("\uC9C0\uAE08 \uB728\uB294 \uAC8C\uC784");
-    expect(sectionTitles).toContain("\uB192\uC740 \uD3C9\uC810 \uC2E0\uC791");
+    expect(sectionTitles).toContain("오늘의 추천");
+    expect(sectionTitles).toContain("지금 뜨는 게임");
+    expect(sectionTitles).toContain("높은 평점 신작");
+  });
+
+  it("renders refresh button in random section", async () => {
+    await renderHome();
+    expect(screen.getByLabelText("다시 추천받기")).toBeInTheDocument();
   });
 
   it("switches to search mode when search is submitted", async () => {

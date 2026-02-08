@@ -360,6 +360,55 @@ describe("igdb client", () => {
     });
   });
 
+  describe("getRandomCuratedGames", () => {
+    it("returns shuffled games with random offset", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse())
+        .mockResolvedValueOnce(createIGDBResponse([mockGame]));
+      const { getRandomCuratedGames } = await import("@/lib/igdb");
+
+      const games = await getRandomCuratedGames();
+
+      expect(games).toEqual([mockGame]);
+      const body = mockFetch.mock.calls[1][1].body as string;
+      expect(body).toContain("rating > 70");
+      expect(body).toContain("rating_count > 5");
+      expect(body).toContain("cover != null");
+      expect(body).toContain("limit 20");
+      expect(body).toMatch(/offset \d+/);
+    });
+
+    it("accepts a custom limit", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse())
+        .mockResolvedValueOnce(createIGDBResponse([]));
+      const { getRandomCuratedGames } = await import("@/lib/igdb");
+
+      await getRandomCuratedGames(10);
+
+      const body = mockFetch.mock.calls[1][1].body as string;
+      expect(body).toContain("limit 10");
+    });
+
+    it("returns all fetched games (shuffled order may differ)", async () => {
+      const games = [
+        { ...mockGame, id: 1 },
+        { ...mockGame, id: 2 },
+        { ...mockGame, id: 3 },
+      ];
+      mockFetch
+        .mockResolvedValueOnce(createTokenResponse())
+        .mockResolvedValueOnce(createIGDBResponse(games));
+      const { getRandomCuratedGames } = await import("@/lib/igdb");
+
+      const result = await getRandomCuratedGames();
+
+      expect(result).toHaveLength(3);
+      const ids = result.map((g: IGDBGame) => g.id).sort();
+      expect(ids).toEqual([1, 2, 3]);
+    });
+  });
+
   describe("searchGames", () => {
     it("searches with query string", async () => {
       mockFetch

@@ -7,6 +7,7 @@ vi.mock("@/lib/igdb", () => ({
   getTopRatedGames: vi.fn(),
   getGamesByGenre: vi.fn(),
   getFilteredGames: vi.fn(),
+  getRandomCuratedGames: vi.fn(),
   getGameDetail: vi.fn(),
   searchGames: vi.fn(),
 }));
@@ -16,6 +17,7 @@ import {
   getTopRatedGames,
   getGamesByGenre,
   getFilteredGames,
+  getRandomCuratedGames,
   getGameDetail,
   searchGames,
 } from "@/lib/igdb";
@@ -37,6 +39,7 @@ describe("GET /api/games", () => {
     vi.mocked(getTopRatedGames).mockReset();
     vi.mocked(getGamesByGenre).mockReset();
     vi.mocked(getFilteredGames).mockReset();
+    vi.mocked(getRandomCuratedGames).mockReset();
   });
 
   async function callGamesRoute(params: string = "") {
@@ -118,6 +121,17 @@ describe("GET /api/games", () => {
     expect(response.status).toBe(200);
     expect(data.games).toEqual([]);
     expect(getFilteredGames).toHaveBeenCalledWith([], [], 20);
+  });
+
+  it("returns random curated games with section=random", async () => {
+    vi.mocked(getRandomCuratedGames).mockResolvedValue([mockGame]);
+
+    const response = await callGamesRoute("section=random");
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.games).toEqual([mockGame]);
+    expect(getRandomCuratedGames).toHaveBeenCalledWith(20);
   });
 
   it("respects custom limit parameter", async () => {
