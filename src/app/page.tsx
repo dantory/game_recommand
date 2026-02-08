@@ -5,6 +5,7 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { GameSection } from "@/components/sections/GameSection";
 import { GameGrid } from "@/components/sections/GameGrid";
+import { AuthHeader } from "@/components/auth/AuthHeader";
 import type { IGDBGame, IGDBGamesResponse } from "@/types/game";
 
 export default function Home() {
@@ -94,7 +95,10 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 space-y-10 pb-20">
       <header className="space-y-6">
-        <h1 className="text-3xl font-bold">🎮 게임 디스커버리</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">🎮 게임 디스커버리</h1>
+          <AuthHeader />
+        </div>
         <SearchBar onSearch={handleSearch} />
       </header>
 
