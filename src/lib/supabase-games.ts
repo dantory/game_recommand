@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { searchGames as igdbSearchGames } from "@/lib/igdb";
 import { igdbImageUrl, shuffleArray } from "@/lib/utils";
 import type { IGDBGame } from "@/types/game";
 import type { Database } from "@/types/supabase";
@@ -218,11 +219,11 @@ export async function getRandomCuratedGames(
   return shuffleArray(games).slice(0, limit);
 }
 
-export async function searchGames(
+async function searchSupabase(
   query: string,
-  limit: number = 20,
+  limit: number,
 ): Promise<IGDBGame[]> {
-  const searchQuery = query
+  const tsQuery = query
     .trim()
     .split(/\s+/)
     .map((term) => `'${term.replace(/'/g, "''")}'`)
@@ -232,7 +233,7 @@ export async function searchGames(
     .from("games")
     .select(GAME_SELECT)
     .not("cover_image_id", "is", null)
-    .textSearch("search_tsv", searchQuery)
+    .textSearch("search_tsv", tsQuery)
     .order("rating_count", { ascending: false })
     .limit(limit);
 
@@ -267,6 +268,36 @@ export async function searchGames(
   ]);
 
   return rows.map((row) => toIGDBGame(row, genreMap, platformMap));
+}
+
+function deduplicateById(games: IGDBGame[]): IGDBGame[] {
+  const seen = new Set<number>();
+  return games.filter((g) => {
+    if (seen.has(g.id)) return false;
+    seen.add(g.id);
+    return true;
+  });
+}
+
+const IGDB_FALLBACK_THRESHOLD = 3;
+
+export async function searchGames(
+  query: string,
+  limit: number = 20,
+): Promise<IGDBGame[]> {
+  const supabaseResults = await searchSupabase(query, limit);
+
+  if (supabaseResults.length >= IGDB_FALLBACK_THRESHOLD) {
+    return supabaseResults.slice(0, limit);
+  }
+
+  try {
+    const igdbResults = await igdbSearchGames(query, limit);
+    const merged = [...supabaseResults, ...igdbResults];
+    return deduplicateById(merged).slice(0, limit);
+  } catch {
+    return supabaseResults;
+  }
 }
 
 export async function getGameDetail(

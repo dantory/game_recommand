@@ -227,7 +227,7 @@ describe("GET /api/games/search", () => {
 
     expect(response.status).toBe(200);
     expect(data.games).toEqual([mockGame]);
-    expect(searchGames).toHaveBeenCalledWith("witcher");
+    expect(searchGames).toHaveBeenCalledWith("witcher", 20);
   });
 
   it("returns 400 when query is missing", async () => {
@@ -259,7 +259,23 @@ describe("GET /api/games/search", () => {
 
     await callSearchRoute("q=%20zelda%20");
 
-    expect(searchGames).toHaveBeenCalledWith("zelda");
+    expect(searchGames).toHaveBeenCalledWith("zelda", 20);
+  });
+
+  it("respects custom limit parameter for search", async () => {
+    vi.mocked(searchGames).mockResolvedValue([]);
+
+    await callSearchRoute("q=mario&limit=5");
+
+    expect(searchGames).toHaveBeenCalledWith("mario", 5);
+  });
+
+  it("clamps search limit to valid range (1-50)", async () => {
+    vi.mocked(searchGames).mockResolvedValue([]);
+
+    await callSearchRoute("q=mario&limit=100");
+
+    expect(searchGames).toHaveBeenCalledWith("mario", 50);
   });
 
   it("returns 500 on internal error", async () => {

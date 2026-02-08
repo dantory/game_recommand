@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { IGDBGame } from "@/types/game";
 
 const mockFrom = vi.fn();
+const mockIgdbSearch = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     from: (...args: unknown[]) => mockFrom(...args),
   },
+}));
+
+vi.mock("@/lib/igdb", () => ({
+  searchGames: (...args: unknown[]) => mockIgdbSearch(...args),
 }));
 
 const mockGenres = [
@@ -212,6 +218,7 @@ describe("query functions", () => {
   beforeEach(() => {
     vi.resetModules();
     mockFrom.mockReset();
+    mockIgdbSearch.mockReset();
   });
 
   function setupQueryMock(gameRows: unknown[] = [mockGameRow]) {
@@ -336,7 +343,7 @@ describe("query functions", () => {
     expect(games).toEqual([]);
   });
 
-  it("searchGames falls back to ilike when textSearch returns empty", async () => {
+  function setupSearchMock(textSearchData: unknown[], ilikeFallbackData?: unknown[]) {
     let searchCallCount = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === "genres") {
@@ -353,7 +360,7 @@ describe("query functions", () => {
               textSearch: () => ({
                 order: () => ({
                   limit: () => ({
-                    data: [],
+                    data: textSearchData,
                     error: null,
                   }),
                 }),
@@ -368,7 +375,7 @@ describe("query functions", () => {
             ilike: () => ({
               order: () => ({
                 limit: () => ({
-                  data: [mockGameRow],
+                  data: ilikeFallbackData ?? [],
                   error: null,
                 }),
               }),
@@ -377,6 +384,73 @@ describe("query functions", () => {
         }),
       };
     });
+  }
+
+  function makeGameRows(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      ...mockGameRow,
+      id: i + 1,
+      name: `Game ${i + 1}`,
+    }));
+  }
+
+  it("searchGames skips IGDB when Supabase returns enough results", async () => {
+    setupSearchMock(makeGameRows(5));
+    const { searchGames } = await import("@/lib/supabase-games");
+
+    const games = await searchGames("witcher", 20);
+
+    expect(games).toHaveLength(5);
+    expect(mockIgdbSearch).not.toHaveBeenCalled();
+  });
+
+  it("searchGames falls back to IGDB when Supabase returns few results", async () => {
+    setupSearchMock([mockGameRow]);
+    const igdbGame: IGDBGame = {
+      id: 9999,
+      name: "IGDB Only Game",
+      cover: { url: "//images.igdb.com/igdb/image/upload/t_thumb/xyz.jpg" },
+    };
+    mockIgdbSearch.mockResolvedValue([igdbGame]);
+
+    const { searchGames } = await import("@/lib/supabase-games");
+
+    const games = await searchGames("obscure", 20);
+
+    expect(mockIgdbSearch).toHaveBeenCalledWith("obscure", 20);
+    expect(games).toHaveLength(2);
+    expect(games[0].id).toBe(1942);
+    expect(games[1].id).toBe(9999);
+  });
+
+  it("searchGames deduplicates results from Supabase and IGDB", async () => {
+    setupSearchMock([mockGameRow]);
+    const duplicateGame: IGDBGame = { id: 1942, name: "The Witcher 3: Wild Hunt" };
+    mockIgdbSearch.mockResolvedValue([duplicateGame]);
+
+    const { searchGames } = await import("@/lib/supabase-games");
+
+    const games = await searchGames("witcher", 20);
+
+    expect(games).toHaveLength(1);
+    expect(games[0].id).toBe(1942);
+  });
+
+  it("searchGames returns Supabase results when IGDB fallback fails", async () => {
+    setupSearchMock([mockGameRow]);
+    mockIgdbSearch.mockRejectedValue(new Error("IGDB down"));
+
+    const { searchGames } = await import("@/lib/supabase-games");
+
+    const games = await searchGames("witcher", 20);
+
+    expect(games).toHaveLength(1);
+    expect(games[0].name).toBe("The Witcher 3: Wild Hunt");
+  });
+
+  it("searchGames uses ilike fallback then IGDB when textSearch returns empty", async () => {
+    setupSearchMock([], [mockGameRow]);
+    mockIgdbSearch.mockResolvedValue([]);
 
     const { searchGames } = await import("@/lib/supabase-games");
 
@@ -418,7 +492,7 @@ describe("query functions", () => {
             ilike: () => ({
               order: () => ({
                 limit: () => ({
-                  data: [mockGameRow],
+                  data: makeGameRows(5),
                   error: null,
                 }),
               }),
@@ -427,44 +501,30 @@ describe("query functions", () => {
         }),
       };
     });
+    mockIgdbSearch.mockResolvedValue([]);
 
     const { searchGames } = await import("@/lib/supabase-games");
 
     const games = await searchGames("witcher!", 20);
 
-    expect(games).toHaveLength(1);
+    expect(games).toHaveLength(5);
   });
 
-  it("searchGames returns results from textSearch when found", async () => {
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "genres") {
-        return { select: () => ({ data: mockGenres, error: null }) };
-      }
-      if (table === "platforms") {
-        return { select: () => ({ data: mockPlatforms, error: null }) };
-      }
-      return {
-        select: () => ({
-          not: () => ({
-            textSearch: () => ({
-              order: () => ({
-                limit: () => ({
-                  data: [mockGameRow],
-                  error: null,
-                }),
-              }),
-            }),
-          }),
-        }),
-      };
-    });
+  it("searchGames returns IGDB results when Supabase returns nothing", async () => {
+    setupSearchMock([], []);
+    const igdbGame: IGDBGame = {
+      id: 8888,
+      name: "IGDB Exclusive",
+    };
+    mockIgdbSearch.mockResolvedValue([igdbGame]);
 
     const { searchGames } = await import("@/lib/supabase-games");
 
-    const games = await searchGames("witcher", 20);
+    const games = await searchGames("unknown", 20);
 
+    expect(mockIgdbSearch).toHaveBeenCalled();
     expect(games).toHaveLength(1);
-    expect(games[0].name).toBe("The Witcher 3: Wild Hunt");
+    expect(games[0].name).toBe("IGDB Exclusive");
   });
 
   it("getGameDetail returns full game with screenshots, videos, similar", async () => {
