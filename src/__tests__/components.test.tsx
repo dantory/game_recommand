@@ -1161,4 +1161,433 @@ describe("ScrollableRow", () => {
     expect(scrollDiv).toBeTruthy();
     expect(container.querySelector(".snap-x")).toBeNull();
   });
+
+  describe("scroll buttons", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("renders left scroll button when canScrollLeft is true", async () => {
+      vi.resetModules();
+      const mockScrollFn = vi.fn();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: true,
+          canScrollRight: false,
+          scroll: mockScrollFn,
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      expect(screen.getByLabelText("왼쪽으로 스크롤")).toBeInTheDocument();
+      expect(screen.queryByLabelText("오른쪽으로 스크롤")).not.toBeInTheDocument();
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+
+    it("renders right scroll button when canScrollRight is true", async () => {
+      vi.resetModules();
+      const mockScrollFn = vi.fn();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: false,
+          canScrollRight: true,
+          scroll: mockScrollFn,
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      expect(screen.getByLabelText("오른쪽으로 스크롤")).toBeInTheDocument();
+      expect(screen.queryByLabelText("왼쪽으로 스크롤")).not.toBeInTheDocument();
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+
+    it("renders both scroll buttons when both directions are scrollable", async () => {
+      vi.resetModules();
+      const mockScrollFn = vi.fn();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: true,
+          canScrollRight: true,
+          scroll: mockScrollFn,
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      expect(screen.getByLabelText("왼쪽으로 스크롤")).toBeInTheDocument();
+      expect(screen.getByLabelText("오른쪽으로 스크롤")).toBeInTheDocument();
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+
+    it("does not render scroll buttons when neither direction is scrollable", async () => {
+      vi.resetModules();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: false,
+          canScrollRight: false,
+          scroll: vi.fn(),
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      expect(screen.queryByLabelText("왼쪽으로 스크롤")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("오른쪽으로 스크롤")).not.toBeInTheDocument();
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+
+    it("calls scroll('left') when left button is clicked", async () => {
+      vi.resetModules();
+      const mockScrollFn = vi.fn();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: true,
+          canScrollRight: false,
+          scroll: mockScrollFn,
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      fireEvent.click(screen.getByLabelText("왼쪽으로 스크롤"));
+      expect(mockScrollFn).toHaveBeenCalledWith("left");
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+
+    it("calls scroll('right') when right button is clicked", async () => {
+      vi.resetModules();
+      const mockScrollFn = vi.fn();
+      vi.doMock("@/hooks/useHorizontalScroll", () => ({
+        useHorizontalScroll: () => ({
+          scrollRef: { current: null },
+          canScrollLeft: false,
+          canScrollRight: true,
+          scroll: mockScrollFn,
+          handlers: {},
+        }),
+      }));
+      const { ScrollableRow } = await import("@/components/ui/ScrollableRow");
+      render(
+        <ScrollableRow>
+          <div>Content</div>
+        </ScrollableRow>
+      );
+      fireEvent.click(screen.getByLabelText("오른쪽으로 스크롤"));
+      expect(mockScrollFn).toHaveBeenCalledWith("right");
+      vi.doUnmock("@/hooks/useHorizontalScroll");
+    });
+  });
+});
+
+describe("FilterBar scroll buttons", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders separator div between genres and platforms", async () => {
+    vi.resetModules();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: false,
+        canScrollRight: false,
+        scroll: vi.fn(),
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    const { container } = render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    const separator = container.querySelector(".bg-border.mx-2");
+    expect(separator).toBeTruthy();
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+
+  it("renders left scroll button when canScrollLeft is true", async () => {
+    vi.resetModules();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: true,
+        canScrollRight: false,
+        scroll: vi.fn(),
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("왼쪽으로 스크롤")).toBeInTheDocument();
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+
+  it("renders right scroll button when canScrollRight is true", async () => {
+    vi.resetModules();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: false,
+        canScrollRight: true,
+        scroll: vi.fn(),
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("오른쪽으로 스크롤")).toBeInTheDocument();
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+
+  it("calls scroll('left') when left button is clicked", async () => {
+    vi.resetModules();
+    const mockScrollFn = vi.fn();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: true,
+        canScrollRight: false,
+        scroll: mockScrollFn,
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("왼쪽으로 스크롤"));
+    expect(mockScrollFn).toHaveBeenCalledWith("left");
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+
+  it("calls scroll('right') when right button is clicked", async () => {
+    vi.resetModules();
+    const mockScrollFn = vi.fn();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: false,
+        canScrollRight: true,
+        scroll: mockScrollFn,
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("오른쪽으로 스크롤"));
+    expect(mockScrollFn).toHaveBeenCalledWith("right");
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+
+  it("marks selected platforms as selected with border-accent", async () => {
+    vi.resetModules();
+    vi.doMock("@/hooks/useHorizontalScroll", () => ({
+      useHorizontalScroll: () => ({
+        scrollRef: { current: null },
+        canScrollLeft: false,
+        canScrollRight: false,
+        scroll: vi.fn(),
+        handlers: {},
+      }),
+    }));
+    const { FilterBar } = await import("@/components/ui/FilterBar");
+    render(
+      <FilterBar
+        selectedGenres={[]}
+        selectedPlatforms={[6]}
+        onToggleGenre={vi.fn()}
+        onTogglePlatform={vi.fn()}
+      />
+    );
+    const pcButton = screen.getByText("PC").closest("button");
+    expect(pcButton?.className).toContain("border-accent");
+    vi.doUnmock("@/hooks/useHorizontalScroll");
+  });
+});
+
+describe("ScreenshotGallery", () => {
+  const mockScreenshots = [
+    { url: "//images.igdb.com/igdb/image/upload/t_thumb/sc1.jpg" },
+    { url: "//images.igdb.com/igdb/image/upload/t_thumb/sc2.jpg" },
+    { url: "//images.igdb.com/igdb/image/upload/t_thumb/sc3.jpg" },
+  ];
+
+  async function renderGallery(screenshots = mockScreenshots) {
+    const { ScreenshotGallery } = await import("@/components/ui/ScreenshotGallery");
+    return render(<ScreenshotGallery screenshots={screenshots} />);
+  }
+
+  it("renders thumbnail images for each screenshot", async () => {
+    await renderGallery();
+    expect(screen.getByAltText("Screenshot 1")).toBeInTheDocument();
+    expect(screen.getByAltText("Screenshot 2")).toBeInTheDocument();
+    expect(screen.getByAltText("Screenshot 3")).toBeInTheDocument();
+  });
+
+  it("clicking a thumbnail opens the modal", async () => {
+    await renderGallery();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("modal shows the correct image in full size", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 2"));
+    const dialog = screen.getByRole("dialog");
+    const fullImage = within(dialog).getByAltText("Screenshot 2");
+    expect(fullImage).toHaveAttribute(
+      "src",
+      "https://images.igdb.com/igdb/image/upload/t_1080p/sc2.jpg"
+    );
+  });
+
+  it("modal shows counter text '1 / N'", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  });
+
+  it("modal shows correct counter for second screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 2"));
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+  });
+
+  it("close button closes the modal", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("닫기"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("clicking the backdrop closes the modal", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(dialog);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("prev button navigates to previous screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 2"));
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("이전 스크린샷"));
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  });
+
+  it("next button navigates to next screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("다음 스크린샷"));
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+  });
+
+  it("prev button is hidden when viewing first screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.queryByLabelText("이전 스크린샷")).not.toBeInTheDocument();
+  });
+
+  it("next button is hidden when viewing last screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 3"));
+    expect(screen.queryByLabelText("다음 스크린샷")).not.toBeInTheDocument();
+  });
+
+  it("Escape key closes modal", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("ArrowLeft key navigates to previous screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 2"));
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  });
+
+  it("ArrowRight key navigates to next screenshot", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(screen.getByText("2 / 3")).toBeInTheDocument();
+  });
+
+  it("clicking the modal image area does NOT close the modal", async () => {
+    await renderGallery();
+    fireEvent.click(screen.getByAltText("Screenshot 1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    const imageContainer = within(dialog).getByAltText("Screenshot 1").closest("div");
+    if (imageContainer) {
+      fireEvent.click(imageContainer);
+    }
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 });
