@@ -934,7 +934,7 @@ describe("Home", () => {
   });
 });
 
-vi.mock("@/lib/igdb", () => ({
+vi.mock("@/lib/supabase-games", () => ({
   getGameDetail: vi.fn(),
 }));
 
@@ -974,14 +974,14 @@ describe("GameDetailPage", () => {
   };
 
   beforeEach(async () => {
-    const { getGameDetail } = await import("@/lib/igdb");
+    const { getGameDetail } = await import("@/lib/supabase-games");
     vi.mocked(getGameDetail).mockReset();
     const { notFound } = await import("next/navigation");
     vi.mocked(notFound).mockReset();
   });
 
   async function renderDetailPage(id: string, game: IGDBGame | null = fullMockGame) {
-    const { getGameDetail } = await import("@/lib/igdb");
+    const { getGameDetail } = await import("@/lib/supabase-games");
     vi.mocked(getGameDetail).mockResolvedValue(game);
 
     const { default: GameDetailPage } = await import(
@@ -1047,7 +1047,7 @@ describe("GameDetailPage", () => {
   });
 
   it("calls notFound when game is null", async () => {
-    const { getGameDetail } = await import("@/lib/igdb");
+    const { getGameDetail } = await import("@/lib/supabase-games");
     const { notFound } = await import("next/navigation");
     vi.mocked(getGameDetail).mockResolvedValue(null);
 

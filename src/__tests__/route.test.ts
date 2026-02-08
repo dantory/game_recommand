@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import type { IGDBGame } from "@/types/game";
 
-vi.mock("@/lib/igdb", () => ({
+vi.mock("@/lib/supabase-games", () => ({
   getPopularRecentGames: vi.fn(),
   getTopRatedGames: vi.fn(),
   getGamesByGenre: vi.fn(),
@@ -20,7 +20,7 @@ import {
   getRandomCuratedGames,
   getGameDetail,
   searchGames,
-} from "@/lib/igdb";
+} from "@/lib/supabase-games";
 
 const mockGame: IGDBGame = {
   id: 1942,

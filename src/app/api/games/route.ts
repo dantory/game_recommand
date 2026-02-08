@@ -5,7 +5,7 @@ import {
   getGamesByGenre,
   getFilteredGames,
   getRandomCuratedGames,
-} from "@/lib/igdb";
+} from "@/lib/supabase-games";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

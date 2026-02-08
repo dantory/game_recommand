@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGameDetail } from "@/lib/igdb";
+import { getGameDetail } from "@/lib/supabase-games";
 
 export async function GET(
   _request: NextRequest,

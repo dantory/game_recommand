@@ -12,6 +12,10 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
+vi.mock("@/lib/supabase-games", async () => {
+  return vi.importActual<typeof import("@/lib/supabase-games")>("@/lib/supabase-games");
+});
+
 const mockRpcResult = [
   {
     id: 100,

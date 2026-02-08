@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { igdbImageUrl } from "@/lib/utils";
+import { getGenreMap, getPlatformMap, coverUrl } from "@/lib/supabase-games";
 import type { IGDBGame } from "@/types/game";
 
 interface RawRecommendation {
@@ -19,27 +19,6 @@ interface RawRecommendation {
 
 export interface RecommendedGame extends IGDBGame {
   similarity_score: number;
-}
-
-let genreCache: Map<number, string> | null = null;
-let platformCache: Map<number, string> | null = null;
-
-async function getGenreMap(): Promise<Map<number, string>> {
-  if (genreCache) return genreCache;
-  const { data } = await supabase.from("genres").select("id, name");
-  genreCache = new Map((data ?? []).map((g) => [g.id, g.name]));
-  return genreCache;
-}
-
-async function getPlatformMap(): Promise<Map<number, string>> {
-  if (platformCache) return platformCache;
-  const { data } = await supabase.from("platforms").select("id, name");
-  platformCache = new Map((data ?? []).map((p) => [p.id, p.name]));
-  return platformCache;
-}
-
-function coverUrl(imageId: string): string {
-  return igdbImageUrl(`//images.igdb.com/igdb/image/upload/t_thumb/${imageId}.jpg`, "t_cover_big");
 }
 
 export async function getRecommendations(

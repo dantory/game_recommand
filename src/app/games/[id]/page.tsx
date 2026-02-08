@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getGameDetail } from "@/lib/igdb";
+import { getGameDetail } from "@/lib/supabase-games";
 import { igdbImageUrl, cn } from "@/lib/utils";
 import { PlatformBadge } from "@/components/ui/PlatformBadge";
 import { GameCard } from "@/components/ui/GameCard";

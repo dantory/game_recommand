@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchGames } from "@/lib/igdb";
+import { searchGames } from "@/lib/supabase-games";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
